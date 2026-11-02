@@ -1,0 +1,22 @@
+name: biblioteca_app
+description: "App Android de la Biblioteca Comunitaria (cliente de la API REST)."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.2                     # hablar con la API
+  provider: ^6.1.2                 # estado de la sesión
+  flutter_secure_storage: ^9.2.4   # guardar el token cifrado en el teléfono
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

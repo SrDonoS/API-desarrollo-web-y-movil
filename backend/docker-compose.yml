@@ -1,0 +1,24 @@
+# MySQL 8 para desarrollo, si no quieres instalarlo en tu compu.
+#   docker compose up -d        (levanta MySQL en el puerto 3306)
+#   docker compose down         (lo apaga; los datos quedan en el volumen)
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: biblio-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: biblioteca
+      MYSQL_USER: biblio_app
+      MYSQL_PASSWORD: cambia-esta-clave
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_0900_ai_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - biblio_mysql:/var/lib/mysql
+      - ./sql/01_base_pruebas.sql:/docker-entrypoint-initdb.d/01_base_pruebas.sql:ro
+
+volumes:
+  biblio_mysql:

@@ -1,0 +1,14 @@
+# Probadas juntas con Python 3.11+ (SQLAlchemy 2.1 exige 3.11 o superior)
+flask==3.1.3
+flask-sqlalchemy==3.1.1
+flask-migrate==4.1.0
+flask-smorest==0.47.0
+marshmallow==4.3.1
+flask-jwt-extended==4.7.4
+flask-cors==6.0.5
+sqlalchemy==2.1.4
+pymysql==1.2.3
+cryptography==50.0.1      # MySQL 8 usa caching_sha2_password: PyMySQL lo necesita
+python-dotenv==1.2.3      # lee el archivo .env
+tzdata==2026.5            # zonas horarias en Windows (America/Santiago)
+gunicorn==26.2.0          # servidor de producción (AWS). No corre en Windows: ahí usa python run.py

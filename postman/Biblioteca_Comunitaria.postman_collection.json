@@ -1,0 +1,1841 @@
+{
+  "info": {
+    "_postman_id": "4afc8ab3-d855-5eb2-90f5-87fcd88451ca",
+    "name": "📚 API Biblioteca Comunitaria",
+    "description": "Colección para **ingresar y listar datos** en la API de la Biblioteca Comunitaria (los 16 endpoints de la planilla, E01 a E16).\n\n### Antes de empezar\n1. Levanta la API: `flask --app run init-db` y `python run.py` (carpeta `backend/`).\n2. Revisa la variable `baseUrl` (pestaña **Variables** de la colección). Por defecto: `http://127.0.0.1:5000`.\n\n### Cómo usarla\n- **Todo de una:** botón **Run** → *Run Biblioteca Comunitaria*. Corre las 6 carpetas en orden.\n- **De a uno:** parte SIEMPRE por la carpeta 1 (login), que guarda los tokens solita.\n\nExplicación completa: `docs/Guia_Postman.md`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1 · 🔑 Autenticación (parte por aquí)",
+      "description": "Primero se consigue el **token**. Sin token, casi todo responde 401.\n\nEstos requests guardan los tokens solitos en las variables `token_biblio` y `token_socio`.",
+      "item": [
+        {
+          "name": "Login bibliotecaria (E02)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Inicia sesión con la bibliotecaria de prueba (la crea `flask --app run init-db`).\n\nEl script de la pestaña **Scripts → Post-response** guarda el `access_token` en la variable `token_biblio`.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"biblio@biblioteca.cl\",\n  \"clave\": \"biblio1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.collectionVariables.set(\"token_biblio\", r.access_token);",
+                  "pm.test(\"Es bibliotecario/a\", () => pm.expect(r.usuario.rol).to.eql(\"bibliotecario\"));",
+                  "console.log(\"🔑 token_biblio guardado\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Hacerse socio (E01)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/registro",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "registro"
+              ]
+            },
+            "description": "Crea un socio nuevo. Fíjate que **no se manda el rol**: el servidor siempre pone `socio`.\n\nEl RUT y el correo se inventan solos en la pestaña **Scripts → Pre-request**.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Socio de Postman\",\n  \"rut\": \"{{rut_nuevo}}\",\n  \"email\": \"{{email_nuevo}}\",\n  \"clave\": \"clave-segura-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// RUT y correo nuevos cada vez (no se pueden repetir: daría 409)",
+                  "const n = Date.now().toString().slice(-7);",
+                  "pm.collectionVariables.set(\"rut_nuevo\", \"1\" + n + \"-K\");",
+                  "pm.collectionVariables.set(\"email_nuevo\", \"socio\" + n + \"@correo.cl\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"El servidor le pone rol socio\", () => pm.expect(r.rol).to.eql(\"socio\"));",
+                  "pm.test(\"La clave NUNCA vuelve\", () => pm.expect(r).to.not.have.property(\"clave\"));",
+                  "pm.collectionVariables.set(\"socio_id\", r.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login socio (E02)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Inicia sesión con el socio recién creado y guarda su token en `token_socio`.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email_nuevo}}\",\n  \"clave\": \"clave-segura-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"token_socio\", pm.response.json().access_token);",
+                  "console.log(\"🔑 token_socio guardado\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "¿Quién soy? (E03)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/yo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "yo"
+              ]
+            },
+            "description": "Devuelve los datos del dueño del token. El `id` es el **número de socio**.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_socio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Soy el socio que acabo de crear\", () => pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\"socio_id\"))));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 · ➕ Ingresar datos (POST)",
+      "description": "Crear cosas en la base de datos: categoría → libro → copia → préstamo.\n\nTodo esto es de la **bibliotecaria** (usa `token_biblio`).",
+      "item": [
+        {
+          "name": "Crear categoría (E11)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/categorias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categorias"
+              ]
+            },
+            "description": "Crea una categoría con nombre nuevo (se inventa solo) y guarda su id en `categoria_id`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{categoria_nombre}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"categoria_nombre\", \"Cómics \" + Date.now().toString().slice(-5));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.collectionVariables.set(\"categoria_id\", r.id);",
+                  "pm.test(\"Nace sin libros\", () => pm.expect(r.total_libros).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear libro (E06)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/libros",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "libros"
+              ]
+            },
+            "description": "Crea un libro en la categoría recién creada. El `id` lo pone el servidor (nunca se manda).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"La amortajada\",\n  \"autor\": \"María Luisa Bombal\",\n  \"isbn\": \"{{isbn}}\",\n  \"anio_publicacion\": 1938,\n  \"categoria_id\": {{categoria_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ISBN de 13 dígitos que no se repite (si se repite: 409 ISBN_DUPLICADO)",
+                  "pm.collectionVariables.set(\"isbn\", \"978\" + Date.now().toString().slice(-10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.collectionVariables.set(\"libro_id\", r.id);",
+                  "pm.test(\"Cabecera Location apunta al libro nuevo\", () => pm.expect(pm.response.headers.get(\"Location\")).to.eql(\"/api/libros/\" + r.id));",
+                  "pm.test(\"Nace sin copias\", () => pm.expect(r.copias_total).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agregar copia física (E09)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/libros/{{libro_id}}/copias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "libros",
+                "{{libro_id}}",
+                "copias"
+              ]
+            },
+            "description": "Recurso **anidado**: el libro va en la ruta (`/libros/{id}/copias`), no en el cuerpo.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo_inventario\": \"{{codigo_copia}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"codigo_copia\", \"LIB-\" + Date.now().toString().slice(-6));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.collectionVariables.set(\"copia_id\", r.id);",
+                  "pm.test(\"Nace disponible\", () => pm.expect(r.estado).to.eql(\"disponible\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar préstamo (E12)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestamos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestamos"
+              ]
+            },
+            "description": "Le presta la copia recién creada al socio recién creado. Las fechas las calcula el servidor (vence en 14 días).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"socio_id\": {{socio_id}},\n  \"copia_id\": {{copia_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.collectionVariables.set(\"prestamo_id\", r.id);",
+                  "pm.test(\"Queda activo y sin multa\", () => { pm.expect(r.estado).to.eql(\"activo\"); pm.expect(r.multa).to.eql(null); });",
+                  "pm.test(\"Vence 14 días después\", () => {",
+                  "  const dias = (new Date(r.fecha_vencimiento) - new Date(r.fecha_prestamo.slice(0, 10))) / 86400000;",
+                  "  pm.expect(dias).to.eql(14);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 · 📋 Listar datos (GET)",
+      "description": "Leer lo que hay en la base. Los socios pueden ver el catálogo; los préstamos de todos, solo la bibliotecaria.",
+      "item": [
+        {
+          "name": "Catálogo completo (E04)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/libros?pagina=1&tam=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "libros"
+              ],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "1"
+                },
+                {
+                  "key": "tam",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Lista paginada (10 por página, máximo 50). Cambia `pagina` en la pestaña **Params**.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_socio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Viene paginado\", () => pm.expect(r).to.have.keys(\"total\", \"pagina\", \"tam\", \"paginas\", \"items\"));",
+                  "pm.test(\"Hay libros\", () => pm.expect(r.items.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar por autor o título (E04)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/libros?buscar=bombal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "libros"
+              ],
+              "query": [
+                {
+                  "key": "buscar",
+                  "value": "bombal"
+                }
+              ]
+            },
+            "description": "`buscar` revisa título y autor, sin importar mayúsculas (en MySQL, tampoco los tildes).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_socio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Encuentra a Bombal\", () => pm.expect(pm.response.json().items.some(l => l.autor.includes(\"Bombal\"))).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Solo libros disponibles (E04)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/libros?disponible=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "libros"
+              ],
+              "query": [
+                {
+                  "key": "disponible",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Solo los libros con al menos una copia disponible.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_socio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Todos tienen copias libres\", () => pm.expect(pm.response.json().items.every(l => l.disponible)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Libros de una categoría (E04)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/libros?categoria={{categoria_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "libros"
+              ],
+              "query": [
+                {
+                  "key": "categoria",
+                  "value": "{{categoria_id}}"
+                }
+              ]
+            },
+            "description": "Filtra por el id de categoría.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_socio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Sale el libro que creamos\", () => pm.expect(pm.response.json().total).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalle de un libro (E05)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/libros/{{libro_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "libros",
+                "{{libro_id}}"
+              ]
+            },
+            "description": "Muestra el libro con sus copias y si están prestadas, pero no quién las tiene (dato de otro socio).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_socio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Trae sus copias\", () => pm.expect(r.copias.length).to.eql(1));",
+                  "pm.test(\"La copia está prestada\", () => pm.expect(r.copias[0].estado).to.eql(\"prestada\"));",
+                  "pm.test(\"No dice QUIÉN la tiene\", () => pm.expect(r.copias[0]).to.not.have.property(\"socio\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Categorías (E10)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categorias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categorias"
+              ]
+            },
+            "description": "Todas las categorías, con cuántos libros tiene cada una.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_socio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Sale la categoría nueva\", () => pm.expect(pm.response.json().map(c => c.nombre)).to.include(pm.collectionVariables.get(\"categoria_nombre\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Préstamos activos — bibliotecaria (E13)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestamos?estado=activo&tam=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestamos"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "activo"
+                },
+                {
+                  "key": "tam",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Los préstamos de **todos** los socios. Filtros: `socio_id`, `estado`, `atrasado`, `multa`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Sale nuestro préstamo\", () => pm.expect(pm.response.json().items.map(p => p.id)).to.include(Number(pm.collectionVariables.get(\"prestamo_id\"))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Préstamos de un socio — bibliotecaria (E13)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestamos?socio_id={{socio_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestamos"
+              ],
+              "query": [
+                {
+                  "key": "socio_id",
+                  "value": "{{socio_id}}"
+                }
+              ]
+            },
+            "description": "Igual que el anterior, pero filtrando por número de socio.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Tiene 1 préstamo\", () => pm.expect(pm.response.json().total).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mis préstamos — socio (E15)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/mis-prestamos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mis-prestamos"
+              ]
+            },
+            "description": "La regla estrella: **no lleva id en la ruta**. El servidor saca al socio del token.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_socio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const yo = Number(pm.collectionVariables.get(\"socio_id\"));",
+                  "pm.test(\"Son todos MÍOS\", () => pm.expect(r.items.every(p => p.socio.id === yo)).to.be.true);",
+                  "pm.test(\"Tengo 1 préstamo\", () => pm.expect(r.total).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 · ✏️ Modificar y borrar (PUT / DELETE)",
+      "description": "Completa el CRUD del libro: Crear (POST), Leer (GET), Actualizar (PUT) y Borrar (DELETE).",
+      "item": [
+        {
+          "name": "Editar libro (PUT · E07)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/libros/{{libro_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "libros",
+                "{{libro_id}}"
+              ]
+            },
+            "description": "PUT **reemplaza todo**: hay que mandar todos los campos, aunque cambie uno solo.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"La amortajada (edición Postman)\",\n  \"autor\": \"María Luisa Bombal\",\n  \"isbn\": \"{{isbn}}\",\n  \"anio_publicacion\": 1938,\n  \"categoria_id\": {{categoria_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Cambió el título\", () => pm.expect(pm.response.json().titulo).to.include(\"edición Postman\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear un libro para borrarlo (E06)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/libros",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "libros"
+              ]
+            },
+            "description": "Un libro sin préstamos, para poder borrarlo en el siguiente paso.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Libro de prueba para borrar\",\n  \"autor\": \"Equipo Biblioteca\",\n  \"isbn\": \"{{isbn_borrar}}\",\n  \"categoria_id\": {{categoria_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"isbn_borrar\", \"979\" + Date.now().toString().slice(-10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"libro_borrar_id\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Borrar libro (DELETE · E08)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/libros/{{libro_borrar_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "libros",
+                "{{libro_borrar_id}}"
+              ]
+            },
+            "description": "Responde **204 No Content**: salió bien y no hay nada que mostrar.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 204\", () => pm.response.to.have.status(204));",
+                  "pm.test(\"204 = sin cuerpo\", () => pm.expect(pm.response.text()).to.eql(\"\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 · 🚨 Errores (pa' mostrarle al profe)",
+      "description": "Una API buena también se nota en **cómo falla**. Cada request de esta carpeta falla a propósito, con el código correcto.",
+      "item": [
+        {
+          "name": "Sin token → 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/libros",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "libros"
+              ]
+            },
+            "description": "401 = *no sé quién eres*. La app volvería al login.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Clave incorrecta → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Mismo mensaje si el correo no existe o si la clave está mala.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"biblio@biblioteca.cl\",\n  \"clave\": \"clave-equivocada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Mensaje genérico (no revela si el correo existe)\", () => pm.expect(pm.response.json().error).to.eql(\"Correo o contraseña incorrectos\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Socio quiere crear un libro → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/libros",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "libros"
+              ]
+            },
+            "description": "403 = *sé quién eres, pero esto no te toca*. NO se vuelve al login.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_socio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"No me dejan\",\n  \"autor\": \"Socio Curioso\",\n  \"isbn\": \"1234567890\",\n  \"categoria_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Socio quiere ver préstamos de todos → 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestamos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestamos"
+              ]
+            },
+            "description": "Los préstamos ajenos solo los ve la bibliotecaria. El socio usa /api/mis-prestamos.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_socio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "🛡️ Colarse con ?socio_id → igual ve solo lo suyo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/mis-prestamos?socio_id=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mis-prestamos"
+              ],
+              "query": [
+                {
+                  "key": "socio_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Prueba de seguridad: aunque mande otro socio_id, el servidor usa el del token.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_socio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const yo = Number(pm.collectionVariables.get(\"socio_id\"));",
+                  "pm.test(\"El ?socio_id se ignora: todo sigue siendo mío\", () => pm.expect(pm.response.json().items.every(p => p.socio.id === yo)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Libro que no existe → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/libros/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "libros",
+                "999999"
+              ]
+            },
+            "description": "404 = el id **de la ruta** no existe.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_socio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Datos malos → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/categorias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categorias"
+              ]
+            },
+            "description": "400 = lo que mandaste está mal (el nombre debe tener entre 3 y 60 letras).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"No\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"detalles dice qué campo falló\", () => pm.expect(pm.response.json().detalles).to.have.property(\"nombre\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mandar el rol en el registro → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/registro",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "registro"
+              ]
+            },
+            "description": "Nadie puede auto-nombrarse bibliotecario: el campo `rol` no se acepta.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Pillo\",\n  \"rut\": \"22222222-2\",\n  \"email\": \"pillo@correo.cl\",\n  \"clave\": \"clave-segura-123\",\n  \"rol\": \"bibliotecario\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Rechaza el campo rol\", () => pm.expect(pm.response.json().detalles).to.have.property(\"rol\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Categoría repetida → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/categorias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categorias"
+              ]
+            },
+            "description": "409 = los datos están bien, pero **chocan** con lo que ya existe.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{categoria_nombre}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"motivo = CATEGORIA_DUPLICADA\", () => pm.expect(pm.response.json().motivo).to.eql(\"CATEGORIA_DUPLICADA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prestar una copia ya prestada → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestamos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestamos"
+              ]
+            },
+            "description": "La copia ya está prestada. El campo `motivo` dice cuál regla se rompió.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"socio_id\": {{socio_id}},\n  \"copia_id\": {{copia_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"motivo = COPIA_NO_DISPONIBLE\", () => pm.expect(pm.response.json().motivo).to.eql(\"COPIA_NO_DISPONIBLE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Borrar un libro con préstamos → 409",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/libros/{{libro_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "libros",
+                "{{libro_id}}"
+              ]
+            },
+            "description": "Protege el historial: un libro que ya se prestó no se puede borrar.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"motivo = LIBRO_CON_PRESTAMOS\", () => pm.expect(pm.response.json().motivo).to.eql(\"LIBRO_CON_PRESTAMOS\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 · 🔄 Devolución y multa",
+      "description": "Operaciones que no son CRUD: devolver el libro y pagar la multa.\n\nPara que haya multa, el préstamo tiene que estar **atrasado** (ver la guía: se simula con un UPDATE en MySQL Workbench).",
+      "item": [
+        {
+          "name": "Registrar devolución (E14)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestamos/{{prestamo_id}}/devolucion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestamos",
+                "{{prestamo_id}}",
+                "devolucion"
+              ]
+            },
+            "description": "Libera la copia. Si hubo atraso, crea la multa ($500 por día) y guarda su id en `multa_id`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Queda devuelto\", () => pm.expect(r.estado).to.eql(\"devuelto\"));",
+                  "pm.collectionVariables.set(\"multa_id\", r.multa ? r.multa.id : 0);",
+                  "console.log(r.multa ? \"💸 Multa de $\" + r.multa.monto : \"✅ Devuelto a tiempo, sin multa\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Devolver otra vez → 409",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/prestamos/{{prestamo_id}}/devolucion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "prestamos",
+                "{{prestamo_id}}",
+                "devolucion"
+              ]
+            },
+            "description": "Repetir la devolución no hace nada dos veces: responde 409.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"motivo = PRESTAMO_YA_DEVUELTO\", () => pm.expect(pm.response.json().motivo).to.eql(\"PRESTAMO_YA_DEVUELTO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pagar multa (E16)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/multas/{{multa_id}}/pago",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "multas",
+                "{{multa_id}}",
+                "pago"
+              ]
+            },
+            "description": "Si la devolución generó multa, la paga. Si se devolvió a tiempo, no hay multa (404).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_biblio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (Number(pm.collectionVariables.get(\"multa_id\")) > 0) {",
+                  "  pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "  pm.test(\"Queda pagada\", () => pm.expect(pm.response.json().estado).to.eql(\"pagada\"));",
+                  "} else {",
+                  "  // Se devolvió a tiempo: no hay multa que pagar (multa_id = 0)",
+                  "  pm.test(\"Sin multa que pagar → 404\", () => pm.response.to.have.status(404));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:5000",
+      "type": "string"
+    },
+    {
+      "key": "token_biblio",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_socio",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "socio_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rut_nuevo",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "email_nuevo",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "categoria_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "categoria_nombre",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "libro_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "isbn",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "libro_borrar_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "isbn_borrar",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "copia_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "codigo_copia",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "prestamo_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "multa_id",
+      "value": "0",
+      "type": "string"
+    }
+  ]
+}

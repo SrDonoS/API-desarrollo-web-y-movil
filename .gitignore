@@ -1,0 +1,33 @@
+# --- Secretos (¡nunca a git!) ---
+.env
+*.pem
+*.key
+
+# --- Python ---
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+*.sqlite3
+
+# --- Flutter / Android ---
+app_movil/.dart_tool/
+app_movil/build/
+app_movil/.flutter-plugins
+app_movil/.flutter-plugins-dependencies
+app_movil/android/.gradle/
+app_movil/android/local.properties
+app_movil/android/key.properties
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# --- Editores / sistema ---
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

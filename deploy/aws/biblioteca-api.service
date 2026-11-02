@@ -1,0 +1,34 @@
+# =====================================================================
+#  Servicio systemd: deja la API corriendo siempre (y la levanta sola
+#  si el EC2 se reinicia).
+#
+#  Instalar:
+#    sudo cp deploy/aws/biblioteca-api.service /etc/systemd/system/
+#    sudo systemctl daemon-reload
+#    sudo systemctl enable --now biblioteca-api
+#  Ver logs:
+#    sudo journalctl -u biblioteca-api -f
+#
+#  Ojo: las rutas asumen Ubuntu (usuario "ubuntu") y el repo clonado en
+#  /home/ubuntu/biblioteca-comunitaria. Si es distinto, cámbialas.
+# =====================================================================
+[Unit]
+Description=API Biblioteca Comunitaria (Gunicorn + Flask)
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/biblioteca-comunitaria/backend
+# Las variables (DATABASE_URL de RDS, JWT_SECRET_KEY...) viven en el .env del servidor
+EnvironmentFile=/home/ubuntu/biblioteca-comunitaria/backend/.env
+ExecStart=/home/ubuntu/biblioteca-comunitaria/backend/venv/bin/gunicorn \
+    --workers 3 \
+    --bind 127.0.0.1:8000 \
+    --access-logfile - \
+    run:app
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
